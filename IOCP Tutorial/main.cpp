@@ -1,12 +1,12 @@
 #include "pch.h"
-#include "IOCompletionPort.h"
+#include "IOCP.h"
 
 const UINT16 SERVER_PORT = 11021;
 const UINT16 MAX_CLIENT = 100;		//총 접속할수 있는 클라이언트 수
 
 int main()
 {
-	IOCompletionPort ioCompletionPort;
+	IOCP ioCompletionPort;
 
 	//소켓을 초기화
 	ioCompletionPort.InitSocket();
