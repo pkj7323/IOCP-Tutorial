@@ -47,16 +47,18 @@ class IOCompletionPort
 {
     
     std::vector<stClientInfo> mClientInfos;     //클라이언트 정보 저장 구조체
-    SOCKET mListenSocket = INVALID_SOCKET;      //클라이언트의 접속을 받기위한 리슨 소켓
-    int mClientCnt = 0;                         //접속 되어있는 클라이언트 
+    SOCKET mListenSocket;                       //클라이언트의 접속을 받기위한 리슨 소켓
+    int mClientCnt;                             //접속 되어있는 클라이언트
     std::vector<std::thread> mIOWorkerThreads;  //IO Worker 스레드
     std::thread mAccepterThread;                //Accept 스레드
-    HANDLE mIOCPHandle = INVALID_HANDLE_VALUE;  //CompletionPort객체 핸들
-    bool mIsWorkerRun = true;                   //작업 쓰레드 동작 플래그
-    bool mIsAccepterRun = true;                 //접속 쓰레드 동작 플래그
-    char mSocketBuf[1024] = { 0, };             //소켓 버퍼
+    HANDLE mIOCPHandle;                         //CompletionPort객체 핸들
+    bool mIsWorkerRun;                          //작업 쓰레드 동작 플래그
+    bool mIsAccepterRun;                        //접속 쓰레드 동작 플래그
+    char mSocketBuf[1024];                      //소켓 버퍼
 public:
-    IOCompletionPort() {}
+	IOCompletionPort(): mListenSocket{ INVALID_SOCKET }, mClientCnt{ 0 },
+	mIOCPHandle{ INVALID_HANDLE_VALUE }, mIsWorkerRun{ true }, mIsAccepterRun{ true }, mSocketBuf{ 0, }
+	{}
 
     ~IOCompletionPort()
     {
@@ -91,6 +93,7 @@ public:
 							DWORD dwFlags //소켓의 특성을 지정하는 플래그입니다. WSA_FLAG_OVERLAPPED는 비동기 I/O 작업을 지원하는 소켓을 생성합니다
 							);*/
         mListenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+		//성공하면 INVALID_SOCKET이 아닌 값이 반환된다.
 
         if (INVALID_SOCKET == mListenSocket)
         {
@@ -116,7 +119,8 @@ public:
         stServerAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
         //위에서 지정한 서버 주소 정보와 cIOCompletionPort 소켓을 연결한다.
-        int nRet = bind(mListenSocket, (SOCKADDR*)&stServerAddr, sizeof(SOCKADDR_IN));
+        int nRet = bind(mListenSocket, reinterpret_cast<SOCKADDR*>(&stServerAddr), sizeof(SOCKADDR_IN));
+
         if (0 != nRet)
         {
             std::cerr << "[에러] bind()함수 실패 : " << WSAGetLastError() << std::endl;
