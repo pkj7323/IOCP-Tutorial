@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "IOCP.h"
 
 const std::uint16_t SERVER_PORT = 11021;
@@ -20,5 +19,6 @@ int main()
 	getchar();
 
 	ioCompletionPort.DestroyThread();
+
 	return 0;
 }
