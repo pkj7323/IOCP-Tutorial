@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "IOCP.h"
 
-const UINT16 SERVER_PORT = 11021;
-const UINT16 MAX_CLIENT = 100;		//총 접속할수 있는 클라이언트 수
+const std::uint16_t SERVER_PORT = 11021;
+const std::uint16_t MAX_CLIENT = 100;		//총 접속할수 있는 클라이언트 수
 
 int main()
 {

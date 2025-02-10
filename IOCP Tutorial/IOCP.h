@@ -1,8 +1,8 @@
 #pragma once
 #include "pch.h" 
 
-#define MAX_SOCKBUF 1024
-#define MAX_WORKERTHREAD 4
+static const std::uint32_t MAX_SOCKBUF = 256;
+static const std::uint32_t MAX_WORKERTHREAD = 100;
 
 enum class IOOperation
 {
@@ -16,20 +16,26 @@ struct OverlappedEx
 	WSAOVERLAPPED m_wsaOverlapped;
 	SOCKET        m_socketClient;
 	WSABUF        m_wsaBuf;
-	char          m_szBuf[MAX_SOCKBUF];
 	IOOperation   m_eOperation;
 };
 
+//TODO: 2 단계. OverlappedEx 구조체에 있는 char m_szBuf[ MAX_SOCKBUF ]를 stClientInfo 구조체로 이동 및 코드 분리하기
+//앞 단계에는 OverlappedEx 구조체에 m_szBuf가 있어서 불 필요한 메모리 낭비가 발생함
+
+
 struct ClientInfo
 {
-	SOCKET m_socketClient;//클라이언트와 연결되는 소켓
-	OverlappedEx m_RecvOverlappedEx;
-	OverlappedEx m_SendOverlappedEx;
+	SOCKET			m_socketClient;//클라이언트와 연결되는 소켓
+	OverlappedEx	m_RecvOverlappedEx;
+	OverlappedEx	m_SendOverlappedEx;
+
+	char			m_RecvBuf[MAX_SOCKBUF];
+	char			m_SendBuf[MAX_SOCKBUF];
 
 	ClientInfo()
 	{
-		memset(&m_RecvOverlappedEx, 0, sizeof(OverlappedEx));
-		memset(&m_SendOverlappedEx, 0, sizeof(OverlappedEx));
+		ZeroMemory(&m_RecvOverlappedEx, sizeof(OverlappedEx));
+		ZeroMemory(&m_SendOverlappedEx, sizeof(OverlappedEx));
 		m_socketClient = INVALID_SOCKET;
 	}
 };

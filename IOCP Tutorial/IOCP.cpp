@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "IOCP.h"
 
-IOCP::IOCP() : m_listenSocket{ INVALID_SOCKET }, m_clientCnt{ 0 },
-m_IOCPHandle{ INVALID_HANDLE_VALUE }, m_isWorkerRun{ true }, m_isAccepterRun{ true }
+IOCP::IOCP() : m_listenSocket{ INVALID_SOCKET }, m_isWorkerRun{ true },
+m_isAccepterRun{ true }, m_IOCPHandle{ INVALID_HANDLE_VALUE }, m_clientCnt{ 0 }
 {
 }
 
@@ -174,11 +174,11 @@ bool IOCP::bindIOCompletionPort(ClientInfo* pClientInfo)
 
 bool IOCP::bindRecv(ClientInfo* pClientInfo)
 {
-	DWORD dwRecvNumBytes = 0;
 	DWORD dwFlags = 0;
+	DWORD dwRecvNumBytes = 0;
 
 	pClientInfo->m_RecvOverlappedEx.m_wsaBuf.len = MAX_SOCKBUF;
-	pClientInfo->m_RecvOverlappedEx.m_wsaBuf.buf = pClientInfo->m_RecvOverlappedEx.m_szBuf;
+	pClientInfo->m_RecvOverlappedEx.m_wsaBuf.buf = pClientInfo->m_RecvBuf;
 	pClientInfo->m_RecvOverlappedEx.m_eOperation = IOOperation::recv;
 
 	int nRet = WSARecv(
@@ -202,11 +202,11 @@ bool IOCP::sendMsg(ClientInfo* pClientInfo, char* pMsg, int nLen)
 {
 	DWORD dwRecvNumBytes = 0;
 
-	std::memcpy(pClientInfo->m_SendOverlappedEx.m_szBuf, pMsg, nLen);
+	std::memcpy(pClientInfo->m_SendBuf, pMsg, nLen);
 	//nLen만큼 pMsg를 m_szBuf로 복사
 
 	pClientInfo->m_SendOverlappedEx.m_wsaBuf.len = nLen;
-	pClientInfo->m_SendOverlappedEx.m_wsaBuf.buf = pClientInfo->m_SendOverlappedEx.m_szBuf;
+	pClientInfo->m_SendOverlappedEx.m_wsaBuf.buf = pClientInfo->m_SendBuf;
 	pClientInfo->m_SendOverlappedEx.m_eOperation = IOOperation::send;
 
 	int nRet = WSASend(
@@ -256,18 +256,18 @@ void IOCP::wokerThread()
 			INFINITE
 		);
 
-		if (bSuccess == true && dwIoSize == 0 && lpOverlapped == nullptr)
+		if (bSuccess && dwIoSize == 0 && !lpOverlapped)
 		{
 			m_isWorkerRun = false;
 			continue;
 		}
 
-		if (lpOverlapped == nullptr)
+		if (!lpOverlapped)
 		{
 			continue;
 		}
 
-		if (bSuccess == false || (bSuccess == true && dwIoSize == 0))
+		if (!bSuccess || (bSuccess && dwIoSize == 0))
 		{
 			std::cout << "socket(" << static_cast<int>(pClientInfo->m_socketClient) << ") 접속 끊김\n";
 			closeClient(pClientInfo);
@@ -278,14 +278,14 @@ void IOCP::wokerThread()
 
 		if (pOverlappedEx->m_eOperation == IOOperation::recv)
 		{
-			pOverlappedEx->m_szBuf[dwIoSize] = '\0';
-			std::cout << "[수신] bytes : " << dwIoSize << " , msg : " << pOverlappedEx->m_szBuf << std::endl;
-			sendMsg(pClientInfo, pOverlappedEx->m_szBuf, dwIoSize);
+			pClientInfo->m_RecvBuf[dwIoSize] = '\0';
+			std::cout << "[수신] bytes : " << dwIoSize << " , msg : " << pClientInfo->m_RecvBuf << std::endl;
+			sendMsg(pClientInfo, pClientInfo->m_RecvBuf, dwIoSize);
 			bindRecv(pClientInfo);
 		}
 		else if (pOverlappedEx->m_eOperation == IOOperation::send)
 		{
-			std::cout << "[송신] bytes : " << dwIoSize << " , msg : " << pOverlappedEx->m_szBuf << std::endl;
+			std::cout << "[송신] bytes : " << dwIoSize << " , msg : " << pClientInfo->m_SendBuf << std::endl;
 		}
 		else
 		{
@@ -304,9 +304,9 @@ void IOCP::accepterThread()
 		//접속 받을 구조체의 인덱스 읽기
 		ClientInfo* pClientInfo = getEmptyClientInfo();
 
-		if (pClientInfo == nullptr)
+		if (!pClientInfo)
 		{
-			std::cerr << "클라이너트 FULL!" << std::endl;
+			std::cerr << "클라이언트 FULL!" << std::endl;
 			return;
 		}
 
@@ -319,14 +319,14 @@ void IOCP::accepterThread()
 		}
 
 		bool ret = bindIOCompletionPort(pClientInfo);
-		if (ret == false)
+		if (!ret)
 		{
 			std::cerr << "bindIOCompletionPort()함수 실패" << std::endl;
 			return;
 		}
 
 		ret = bindRecv(pClientInfo);
-		if (ret == false)
+		if (!ret)
 		{
 			std::cerr << "bindRecv()함수 실패" << std::endl;
 			return;
@@ -340,14 +340,14 @@ void IOCP::accepterThread()
 
 void IOCP::closeClient(ClientInfo* pClientInfo, bool bIsForce)
 {
-	linger stlinger = { 0,0 };
+	linger linger = { 0,0 };
 	// SO_DONTLINGER로 설정
 
 	// bIsForce가 true이면 SO_LINGER, timeout = 0으로 설정하여 강제 종료 시킨다. 주의 : 데이터 손실이 있을수 있음
 	if (bIsForce)
 	{
-		stlinger.l_onoff = 1;
-		stlinger.l_linger = 0;
+		linger.l_onoff = 1;
+		linger.l_linger = 0;
 	}
 
 	// socketClose소켓의 데이터 송수신을 모두 중단 시킨다.
@@ -355,7 +355,7 @@ void IOCP::closeClient(ClientInfo* pClientInfo, bool bIsForce)
 
 	// 소켓 옵션을 설정한다.
 	setsockopt(pClientInfo->m_socketClient, SOL_SOCKET, SO_LINGER,
-		reinterpret_cast<char*>(&stlinger), sizeof(stlinger));
+		reinterpret_cast<char*>(&linger), sizeof(linger));
 
 	// 소켓을 닫는다.
 	closesocket(pClientInfo->m_socketClient);
