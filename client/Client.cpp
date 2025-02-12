@@ -47,19 +47,27 @@ int main()
     std::cout << "서버에 연결 성공!" << std::endl;
 
     // 서버로 메시지 전송
-    std::string sendMsg;
-	std::cout << "서버로 전송할 메시지를 입력하세요: ";
-	std::getline(std::cin, sendMsg);
-	sendMsg.append("\0");
-    send(clientSocket, sendMsg.c_str(), sendMsg.size(), 0);
+	while (true)
+	{
+		std::string sendMsg;
+    	std::cout << "서버로 전송할 메시지를 입력하세요: ";
+    	std::getline(std::cin, sendMsg);
+    	sendMsg.append("\0");
+    	send(clientSocket, sendMsg.c_str(), sendMsg.size(), 0);
+		if (sendMsg == "quit")
+		{
+            break;
+		}
 
-    // 서버로부터 메시지 수신
-    char recvBuf[1024] = { 0 };
-    int recvLen = recv(clientSocket, recvBuf, sizeof(recvBuf) - 1, 0);
-    if (recvLen > 0)
-    {
-        std::cout << "서버로부터 수신한 메시지: " << recvBuf << std::endl;
-    }
+
+    	// 서버로부터 메시지 수신
+    	char recvBuf[1024] = { 0 };
+    	int recvLen = recv(clientSocket, recvBuf, sizeof(recvBuf) - 1, 0);
+    	if (recvLen > 0)
+    	{
+    		std::cout << "서버로부터 수신한 메시지: " << recvBuf << std::endl;
+    	}
+	}
 
     // 소켓 닫기
     closesocket(clientSocket);

@@ -284,6 +284,7 @@ void IOCP::wokerThread()
 		}
 		else if (pOverlappedEx->m_eOperation == IOOperation::send)
 		{
+			pClientInfo->m_SendBuf[dwIoSize] = '\0';
 			std::cout << "[¼Û½Å] bytes : " << dwIoSize << " , msg : " << pClientInfo->m_SendBuf << std::endl;
 		}
 		else
