@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -46,8 +47,11 @@ int main()
     std::cout << "서버에 연결 성공!" << std::endl;
 
     // 서버로 메시지 전송
-    const char* sendMsg = "Hello, Server!";
-    send(clientSocket, sendMsg, strlen(sendMsg), 0);
+    std::string sendMsg;
+	std::cout << "서버로 전송할 메시지를 입력하세요: ";
+	std::getline(std::cin, sendMsg);
+	sendMsg.append("\0");
+    send(clientSocket, sendMsg.c_str(), sendMsg.size(), 0);
 
     // 서버로부터 메시지 수신
     char recvBuf[1024] = { 0 };

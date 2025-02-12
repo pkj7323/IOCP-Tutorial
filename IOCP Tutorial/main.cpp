@@ -9,6 +9,8 @@ int main()
 
 	server.InitSocket();
 
+	server.BindandListen(SERVER_PORT);
+
 	server.StartServer(MAX_CLIENT);
 
 	while (true)
