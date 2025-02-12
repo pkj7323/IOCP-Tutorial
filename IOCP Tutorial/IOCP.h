@@ -1,7 +1,10 @@
 #pragma once
 #include "Define.h"
 
-
+// TODO:
+// 3 단계.애플리케이션과 네트워크 코드 분리하기
+// IOCP를 네트워크 라이브러리화 하기 위해 네트워크와 서버 로직 코드를 분리한다.
+// 연결, 끊어짐, 데이터 받음을 애플리케이션에 전달하기
 class IOCP
 {
 	SOCKET						m_listenSocket;
@@ -14,7 +17,7 @@ class IOCP
 	int							m_clientCnt;
 public:
 	IOCP();
-	~IOCP();
+	virtual ~IOCP();
 	bool InitSocket();
 	//------서버용 함수-------
 	//서버의 주소정보를 소켓과 연결시키고 접속 요청을 받기 위해 
@@ -22,6 +25,9 @@ public:
 	bool BindandListen(int nBindPort);
 	bool StartServer(const std::uint32_t maxClientCount);
 	void DestroyThread();
+	virtual void OnConnect(const std::uint32_t clientIndex) {}
+	virtual void OnClose(const std::uint32_t clientIndex) {}
+	virtual void OnReceive(const std::uint32_t clientIndex, const std::uint32_t size, char* pData) {}
 private:
 	void createClient(const std::uint32_t maxClientCount);
 	bool createWorkerThread();

@@ -9,6 +9,7 @@
 #include <vector>
 #include <array>
 #include <windows.h>
+#include <string>
 
 static const std::uint32_t MAX_SOCKBUF = 256;
 static const std::uint32_t MAX_WORKERTHREAD = 100;
