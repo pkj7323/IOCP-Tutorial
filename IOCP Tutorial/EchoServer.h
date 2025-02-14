@@ -15,9 +15,9 @@ class EchoServer : public IOCP
 public:
 	EchoServer() = default;
 	virtual ~EchoServer() = default;
-	virtual void OnConnect(const std::uint32_t clientIndex) override;
-	virtual void OnClose(const std::uint32_t clientIndex) override;
-	virtual void OnReceive(const std::uint32_t clientIndex, const std::uint32_t size, char* pData) override;
+	virtual void OnConnect(const UINT32& clientIndex) override;
+	virtual void OnClose(const UINT32& clientIndex) override;
+	virtual void OnReceive(const UINT32& clientIndex, const UINT32& size, char* pData) override;
 
 	void Run(const uint32_t& maxClient);
 

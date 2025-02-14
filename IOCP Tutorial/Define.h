@@ -11,9 +11,9 @@
 #include <windows.h>
 #include <string>
 
-constexpr std::uint32_t MAX_SOCKBUF = 256;
-constexpr std::uint32_t MAX_SOCK_SENDBUF = 4096;
-constexpr std::uint32_t MAX_WORKERTHREAD = 4;
+constexpr UINT32 MAX_SOCKBUF = 256;
+constexpr UINT32 MAX_SOCK_SENDBUF = 4096;
+constexpr UINT32 MAX_WORKERTHREAD = 4;
 
 
 enum class IOOperation
@@ -31,4 +31,3 @@ struct OverlappedEx
 	IOOperation   m_eOperation;
 };
 
-#include "ClientInfo.h"

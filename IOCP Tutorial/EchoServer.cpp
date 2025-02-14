@@ -1,17 +1,17 @@
 #include "EchoServer.h"
 
 
-void EchoServer::OnConnect(const std::uint32_t clientIndex)
+void EchoServer::OnConnect(const UINT32& clientIndex)
 {
 	std::cout << "[OnConnect] 클라이언트 접속 : " << clientIndex << std::endl;
 }
 
-void EchoServer::OnClose(const std::uint32_t clientIndex)
+void EchoServer::OnClose(const UINT32& clientIndex)
 {
 	std::cout << "[OnClose] 클라이언트 접속 종료 : " << clientIndex << std::endl;
 }
 
-void EchoServer::OnReceive(const std::uint32_t clientIndex, const std::uint32_t size, char* pData)
+void EchoServer::OnReceive(const UINT32& clientIndex, const UINT32& size, char* pData)
 {
 	std::cout << "[OnReceive] 클라이언트: Index(" << clientIndex << "), dataSize(" << size << ")\n";
 

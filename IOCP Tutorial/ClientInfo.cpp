@@ -7,7 +7,7 @@ ClientInfo::ClientInfo()
 	ZeroMemory(&m_RecvOverlappedEx, sizeof(OverlappedEx));
 }
 
-void ClientInfo::Init(const uint32_t& index)
+void ClientInfo::Init(const UINT32& index)
 {
 	m_nIndex = index;
 }
@@ -95,7 +95,7 @@ bool ClientInfo::OnConnect(HANDLE iocpHandle_, SOCKET socket_)
 	return BindRecv();
 }
 
-bool ClientInfo::SendMsg(const uint32_t& dataSize_, char* pMsg)
+bool ClientInfo::SendMsg(const UINT32& dataSize_, char* pMsg)
 {
 	auto sendOverlappedEX = new OverlappedEx;
 	ZeroMemory(sendOverlappedEX, sizeof(OverlappedEx));
@@ -125,13 +125,13 @@ bool ClientInfo::SendMsg(const uint32_t& dataSize_, char* pMsg)
 	return true;
 }
 
-void ClientInfo::SendCompleted(const uint32_t& dataSize_)
+void ClientInfo::SendCompleted(const UINT32& dataSize_)
 {
 	std::cout << "[송신 완료] bytes : " << dataSize_ << std::endl;
 }
 
 
-uint32_t ClientInfo::GetIndex() const
+UINT32 ClientInfo::GetIndex() const
 {
 	return m_nIndex;
 }

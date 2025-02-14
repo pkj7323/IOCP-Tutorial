@@ -62,7 +62,7 @@ bool IOCP::BindandListen(int nBindPort)
 	return true;
 }
 
-bool IOCP::StartServer(const UINT32 maxClientCount)
+bool IOCP::StartServer(const UINT32& maxClientCount)
 {
 	createClient(maxClientCount);
 
@@ -113,18 +113,18 @@ void IOCP::DestroyThread()
 
 }
 
-ClientInfo* IOCP::GetClientInfo(const uint32_t& sessionIndex)
+ClientInfo* IOCP::GetClientInfo(const UINT32& sessionIndex)
 {
 	return &m_clientInfos[sessionIndex];
 }
 
-bool IOCP::SendMsg(const std::uint32_t& sessionIndex_, const std::uint32_t& dataSize_, char* pData)
+bool IOCP::SendMsg(const UINT32& sessionIndex_, const UINT32& dataSize_, char* pData)
 {
 	auto pClient = GetClientInfo(sessionIndex_);
 	return pClient->SendMsg(dataSize_, pData);
 }
 
-void IOCP::createClient(const UINT32 maxClientCount)
+void IOCP::createClient(const UINT32& maxClientCount)
 {
 	for (UINT32 i = 0; i < maxClientCount; ++i)
 	{

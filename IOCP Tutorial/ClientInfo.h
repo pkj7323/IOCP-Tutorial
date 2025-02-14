@@ -10,7 +10,7 @@ private:
 	char m_RecvBuf[MAX_SOCKBUF];//데이터 버퍼
 public:
 	ClientInfo();
-	void Init(const uint32_t& index);
+	void Init(const UINT32& index);
 
 	void Clear();
 	void Close(bool bIsForce_ = false);
@@ -18,10 +18,10 @@ public:
 	bool BindRecv();
 	bool OnConnect(HANDLE iocpHandle_, SOCKET socket_);
 
-	bool SendMsg(const uint32_t& dataSize_, char* pMsg);
-	void SendCompleted(const uint32_t& dataSize_);
+	bool SendMsg(const UINT32& dataSize_, char* pMsg);
+	void SendCompleted(const UINT32& dataSize_);
 
-	uint32_t GetIndex() const;
+	UINT32 GetIndex() const;
 
 	SOCKET GetSocket() const;
 
