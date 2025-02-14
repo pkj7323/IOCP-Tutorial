@@ -113,12 +113,23 @@ void IOCP::DestroyThread()
 
 }
 
+ClientInfo* IOCP::GetClientInfo(const uint32_t& sessionIndex)
+{
+	return &m_clientInfos[sessionIndex];
+}
+
+bool IOCP::SendMsg(const std::uint32_t& sessionIndex_, const std::uint32_t& dataSize_, char* pData)
+{
+	auto pClient = GetClientInfo(sessionIndex_);
+	return pClient->SendMsg(dataSize_, pData);
+}
+
 void IOCP::createClient(const UINT32 maxClientCount)
 {
 	for (UINT32 i = 0; i < maxClientCount; ++i)
 	{
 		m_clientInfos.emplace_back();
-		m_clientInfos[i].m_nIndex = i;
+		m_clientInfos[i].Init(i);
 	}
 }
 
@@ -147,7 +158,7 @@ ClientInfo* IOCP::getEmptyClientInfo()
 {
 	for(auto& client : m_clientInfos)
 	{
-		if (client.m_socketClient == INVALID_SOCKET)
+		if (client.IsConnected() == false)
 		{
 			return &client;
 		}
@@ -156,76 +167,7 @@ ClientInfo* IOCP::getEmptyClientInfo()
 }
 
 
-bool IOCP::bindIOCompletionPort(ClientInfo* pClientInfo)
-{
-	auto hIOCP = CreateIoCompletionPort(
-		reinterpret_cast<HANDLE>(pClientInfo->m_socketClient),
-		m_IOCPHandle,
-		reinterpret_cast<ULONG_PTR>(pClientInfo),
-		0
-	);
-	if (hIOCP == nullptr && m_IOCPHandle != hIOCP)
-	{
-		std::cerr << "[에러] CreateIoCompletionPort()함수 실패 : " << GetLastError() << std::endl;
-		return false;
-	}
-	return true;
-}
 
-bool IOCP::bindRecv(ClientInfo* pClientInfo)
-{
-	DWORD dwFlags = 0;
-	DWORD dwRecvNumBytes = 0;
-
-	pClientInfo->m_RecvOverlappedEx.m_wsaBuf.len = MAX_SOCKBUF;
-	pClientInfo->m_RecvOverlappedEx.m_wsaBuf.buf = pClientInfo->m_RecvBuf;
-	pClientInfo->m_RecvOverlappedEx.m_eOperation = IOOperation::recv;
-
-	int nRet = WSARecv(
-		pClientInfo->m_socketClient,
-		&(pClientInfo->m_RecvOverlappedEx.m_wsaBuf),
-		1,
-		&dwRecvNumBytes,
-		&dwFlags,
-		reinterpret_cast<LPWSAOVERLAPPED>(&pClientInfo->m_RecvOverlappedEx),
-		nullptr);
-
-	if (nRet == SOCKET_ERROR && (GetLastError() != ERROR_IO_PENDING))
-	{
-		std::cerr << "[에러] WSARecv()함수 실패 : " << WSAGetLastError() << std::endl;
-		return false;
-	}
-	return true;
-}
-
-bool IOCP::sendMsg(ClientInfo* pClientInfo, char* pMsg, int nLen)
-{
-	DWORD dwRecvNumBytes = 0;
-
-	std::memcpy(pClientInfo->m_SendBuf, pMsg, nLen);
-	//nLen만큼 pMsg를 m_szBuf로 복사
-
-	pClientInfo->m_SendOverlappedEx.m_wsaBuf.len = nLen;
-	pClientInfo->m_SendOverlappedEx.m_wsaBuf.buf = pClientInfo->m_SendBuf;
-	pClientInfo->m_SendOverlappedEx.m_eOperation = IOOperation::send;
-
-	int nRet = WSASend(
-		pClientInfo->m_socketClient,
-		&(pClientInfo->m_SendOverlappedEx.m_wsaBuf),
-		1,
-		&dwRecvNumBytes,
-		0,
-		reinterpret_cast<LPWSAOVERLAPPED>(&pClientInfo->m_SendOverlappedEx),
-		nullptr
-	);
-
-	if (nRet == SOCKET_ERROR && (GetLastError() != ERROR_IO_PENDING))
-	{
-		std::cerr << "[에러] WSASend()함수 실패 : " << WSAGetLastError() << std::endl;
-		return false;
-	}
-	return true;
-}
 
 void IOCP::wokerThread()
 {
@@ -256,42 +198,41 @@ void IOCP::wokerThread()
 			INFINITE
 		);
 
-		if (bSuccess && dwIoSize == 0 && !lpOverlapped)
+		if (bSuccess && dwIoSize == 0 && lpOverlapped == nullptr)
 		{
 			m_isWorkerRun = false;
 			continue;
 		}
 
-		if (!lpOverlapped)
+		if (lpOverlapped == nullptr)
 		{
 			continue;
 		}
 
 		if (!bSuccess || (bSuccess && dwIoSize == 0))
 		{
-			std::cout << "socket(" << static_cast<int>(pClientInfo->m_socketClient) << ") 접속 끊김\n";
+			//std::cout << "socket(" << static_cast<int>(pClientInfo->GetSocket()) << ") 접속 끊김\n";
 			closeClient(pClientInfo);
 			continue;
 		}
 
-		OverlappedEx* pOverlappedEx = (OverlappedEx*)lpOverlapped;
+		auto pOverlappedEx = reinterpret_cast<OverlappedEx*>(lpOverlapped);
 
 		if (pOverlappedEx->m_eOperation == IOOperation::recv)
 		{
-			OnReceive(pClientInfo->m_nIndex, dwIoSize, pClientInfo->m_RecvBuf);
-			/*pClientInfo->m_RecvBuf[dwIoSize] = '\0';
-			std::cout << "[수신] bytes : " << dwIoSize << " , msg : " << pClientInfo->m_RecvBuf << std::endl;*/
-			sendMsg(pClientInfo, pClientInfo->m_RecvBuf, dwIoSize);
-			bindRecv(pClientInfo);
+			OnReceive(pClientInfo->GetIndex(), dwIoSize, pClientInfo->GetRecvBuffer());
+
+			pClientInfo->BindRecv();
 		}
 		else if (pOverlappedEx->m_eOperation == IOOperation::send)
 		{
-			pClientInfo->m_SendBuf[dwIoSize] = '\0';
-			std::cout << "[송신] bytes : " << dwIoSize << " , msg : " << pClientInfo->m_SendBuf << std::endl;
+			delete[] pOverlappedEx->m_wsaBuf.buf;
+			delete pOverlappedEx;
+			pClientInfo->SendCompleted(dwIoSize);
 		}
 		else
 		{
-			std::cout << "socket(" << static_cast<int>(pClientInfo->m_socketClient) << ")에서 예외상황\n";
+			std::cout << "socket(" << static_cast<int>(pClientInfo->GetIndex()) << ")에서 예외상황\n";
 		}
 	}
 }
@@ -313,32 +254,24 @@ void IOCP::accepterThread()
 		}
 
 		//클라이언트 접속 요청이 들어올때까지 기다린다.
-		pClientInfo->m_socketClient = accept(m_listenSocket, reinterpret_cast<SOCKADDR*>(&clientAddr), &addrLen);
+		auto newSocket = accept(m_listenSocket, reinterpret_cast<SOCKADDR*>(&clientAddr), &addrLen);
 
-		if (pClientInfo->m_socketClient == INVALID_SOCKET)
+		if (newSocket == INVALID_SOCKET)
 		{
 			continue;
 		}
 
-		bool ret = bindIOCompletionPort(pClientInfo);
-		if (!ret)
+		if (pClientInfo->OnConnect(m_IOCPHandle,newSocket) == false)
 		{
-			std::cerr << "bindIOCompletionPort()함수 실패" << std::endl;
-			return;
-		}
-
-		ret = bindRecv(pClientInfo);
-		if (!ret)
-		{
-			std::cerr << "bindRecv()함수 실패" << std::endl;
-			return;
+			pClientInfo->Close(true);
+			continue;
 		}
 		/*
 		std::array<char, 32> strIP={0};
 		inet_ntop(AF_INET, (&clientAddr.sin_addr), strIP.data(), strIP.size() - 1);
 		std::cout << "클라이언트 접속 : " << strIP.data() << "SOCKET: " << static_cast<int>(pClientInfo->m_socketClient) << std::endl;*/
 
-		OnConnect(pClientInfo->m_nIndex);
+		OnConnect(pClientInfo->GetIndex());
 
 		++m_clientCnt;
 	}
@@ -346,28 +279,9 @@ void IOCP::accepterThread()
 
 void IOCP::closeClient(ClientInfo* pClientInfo, bool bIsForce)
 {
-	linger linger = { 0,0 };
-	// SO_DONTLINGER로 설정
+	auto clientIndex = pClientInfo->GetIndex();
 
-	// bIsForce가 true이면 SO_LINGER, timeout = 0으로 설정하여 강제 종료 시킨다. 주의 : 데이터 손실이 있을수 있음
-	if (bIsForce)
-	{
-		linger.l_onoff = 1;
-		linger.l_linger = 0;
-	}
+	pClientInfo->Close(bIsForce);
 
-	// socketClose소켓의 데이터 송수신을 모두 중단 시킨다.
-	shutdown(pClientInfo->m_socketClient, SD_BOTH);
-
-	// 소켓 옵션을 설정한다.
-	setsockopt(pClientInfo->m_socketClient, SOL_SOCKET, SO_LINGER,
-		reinterpret_cast<char*>(&linger), sizeof(linger));
-
-	// 소켓을 닫는다.
-	closesocket(pClientInfo->m_socketClient);
-
-	pClientInfo->m_socketClient = INVALID_SOCKET;
-
-	OnClose(pClientInfo->m_nIndex);
-	
+	OnClose(clientIndex);
 }

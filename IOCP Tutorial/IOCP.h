@@ -18,26 +18,44 @@ public:
 	IOCP();
 	virtual ~IOCP();
 	bool InitSocket();
+
 	//------서버용 함수-------
 	//서버의 주소정보를 소켓과 연결시키고 접속 요청을 받기 위해 
 	//소켓을 등록하는 함수
 	bool BindandListen(int nBindPort);
+
 	bool StartServer(const std::uint32_t maxClientCount);
+
 	void DestroyThread();
+
+	ClientInfo* GetClientInfo(const uint32_t& sessionIndex);
+
+	bool SendMsg(const std::uint32_t& sessionIndex_, const std::uint32_t& dataSize_ , char* pData);
+
 	virtual void OnConnect(const std::uint32_t clientIndex) {}
 	virtual void OnClose(const std::uint32_t clientIndex) {}
 	virtual void OnReceive(const std::uint32_t clientIndex, const std::uint32_t size, char* pData) {}
 private:
 	void createClient(const std::uint32_t maxClientCount);
+
 	bool createWorkerThread();
+
 	bool createAccepterThread();
+
 	//사용하지 않는 클라이언트 정보 구조체를 반환한다.
 	ClientInfo* getEmptyClientInfo();
+
 	//CompletionPort객체와 소켓과 CompletionKey를 연결시키는 역할을 한다.
 	bool bindIOCompletionPort(ClientInfo* pClientInfo);
+
 	bool bindRecv(ClientInfo* pClientInfo);
+
 	bool sendMsg(ClientInfo* pClientInfo, char* pMsg, int nLen);
+
 	void wokerThread();
+
 	void accepterThread();
+
 	void closeClient(ClientInfo* pClientInfo, bool bIsForce = false);
+
 };

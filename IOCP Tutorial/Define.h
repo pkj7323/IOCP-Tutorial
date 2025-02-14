@@ -11,8 +11,10 @@
 #include <windows.h>
 #include <string>
 
-static const std::uint32_t MAX_SOCKBUF = 256;
-static const std::uint32_t MAX_WORKERTHREAD = 100;
+constexpr std::uint32_t MAX_SOCKBUF = 256;
+constexpr std::uint32_t MAX_SOCK_SENDBUF = 4096;
+constexpr std::uint32_t MAX_WORKERTHREAD = 4;
+
 
 enum class IOOperation
 {
@@ -29,21 +31,4 @@ struct OverlappedEx
 	IOOperation   m_eOperation;
 };
 
-
-struct ClientInfo
-{
-	int32_t			m_nIndex;
-	SOCKET			m_socketClient;//클라이언트와 연결되는 소켓
-	OverlappedEx	m_RecvOverlappedEx;
-	OverlappedEx	m_SendOverlappedEx;
-
-	char			m_RecvBuf[MAX_SOCKBUF];
-	char			m_SendBuf[MAX_SOCKBUF];
-
-	ClientInfo()
-	{
-		ZeroMemory(&m_RecvOverlappedEx, sizeof(OverlappedEx));
-		ZeroMemory(&m_SendOverlappedEx, sizeof(OverlappedEx));
-		m_socketClient = INVALID_SOCKET;
-	}
-};
+#include "ClientInfo.h"

@@ -11,8 +11,9 @@ int main()
 
 	server.BindandListen(SERVER_PORT);
 
-	server.StartServer(MAX_CLIENT);
+	server.Run(MAX_CLIENT);
 
+	std::cout << "아무키나 누를때까지 대기\n";
 	while (true)
 	{
 		std::string inputCmd;
@@ -23,7 +24,7 @@ int main()
 		}
 	}
 
-	server.DestroyThread();
+	server.End();
 
 	return 0;
 }
