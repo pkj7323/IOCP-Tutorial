@@ -32,6 +32,7 @@ struct OverlappedEx
 
 struct ClientInfo
 {
+	int32_t			m_nIndex;
 	SOCKET			m_socketClient;//클라이언트와 연결되는 소켓
 	OverlappedEx	m_RecvOverlappedEx;
 	OverlappedEx	m_SendOverlappedEx;

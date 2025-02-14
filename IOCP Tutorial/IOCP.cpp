@@ -118,6 +118,7 @@ void IOCP::createClient(const UINT32 maxClientCount)
 	for (UINT32 i = 0; i < maxClientCount; ++i)
 	{
 		m_clientInfos.emplace_back();
+		m_clientInfos[i].m_nIndex = i;
 	}
 }
 
@@ -277,8 +278,9 @@ void IOCP::wokerThread()
 
 		if (pOverlappedEx->m_eOperation == IOOperation::recv)
 		{
-			pClientInfo->m_RecvBuf[dwIoSize] = '\0';
-			std::cout << "[수신] bytes : " << dwIoSize << " , msg : " << pClientInfo->m_RecvBuf << std::endl;
+			OnReceive(pClientInfo->m_nIndex, dwIoSize, pClientInfo->m_RecvBuf);
+			/*pClientInfo->m_RecvBuf[dwIoSize] = '\0';
+			std::cout << "[수신] bytes : " << dwIoSize << " , msg : " << pClientInfo->m_RecvBuf << std::endl;*/
 			sendMsg(pClientInfo, pClientInfo->m_RecvBuf, dwIoSize);
 			bindRecv(pClientInfo);
 		}
@@ -331,9 +333,13 @@ void IOCP::accepterThread()
 			std::cerr << "bindRecv()함수 실패" << std::endl;
 			return;
 		}
+		/*
 		std::array<char, 32> strIP={0};
 		inet_ntop(AF_INET, (&clientAddr.sin_addr), strIP.data(), strIP.size() - 1);
-		std::cout << "클라이언트 접속 : " << strIP.data() << "SOCKET: " << static_cast<int>(pClientInfo->m_socketClient) << std::endl;
+		std::cout << "클라이언트 접속 : " << strIP.data() << "SOCKET: " << static_cast<int>(pClientInfo->m_socketClient) << std::endl;*/
+
+		OnConnect(pClientInfo->m_nIndex);
+
 		++m_clientCnt;
 	}
 }
@@ -361,4 +367,7 @@ void IOCP::closeClient(ClientInfo* pClientInfo, bool bIsForce)
 	closesocket(pClientInfo->m_socketClient);
 
 	pClientInfo->m_socketClient = INVALID_SOCKET;
+
+	OnClose(pClientInfo->m_nIndex);
+	
 }
