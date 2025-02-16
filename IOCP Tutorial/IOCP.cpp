@@ -20,14 +20,15 @@ bool IOCP::InitSocket()
 	int nRet = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (nRet != 0)
 	{
-		std::cerr << "[에러] WSAStartup : " << GetLastError() << std::endl;
+		std::cerr << "[에러] WSAStartup : " << WSAGetLastError() << std::endl;
 		return false;
 	}
 
-	m_listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+	m_listenSocket = WSASocketW(AF_INET, SOCK_STREAM, IPPROTO_TCP, 
+		nullptr, 0, WSA_FLAG_OVERLAPPED);
 	if (m_listenSocket == INVALID_SOCKET)
 	{
-		std::cerr << "[에러] WSASocket : " << GetLastError() << std::endl;
+		std::cerr << "[에러] WSASocket : " << WSAGetLastError() << std::endl;
 		return false;
 	}
 
@@ -37,26 +38,26 @@ bool IOCP::InitSocket()
 
 bool IOCP::BindandListen(int nBindPort)
 {
-	SOCKADDR_IN serverAddr;
-	serverAddr.sin_family = AF_INET;
-	serverAddr.sin_port = htons(nBindPort);
+	SOCKADDR_IN stServerAddr;
+	stServerAddr.sin_family = AF_INET;
+	stServerAddr.sin_port = htons(nBindPort);
 		//서버 포트를 설정한다.        
 		//어떤 주소에서 들어오는 접속이라도 받아들이겠다.
 		//보통 서버라면 이렇게 설정한다. 만약 한 아이피에서만 접속을 받고 싶다면
 		//그 주소를 inet_addr함수를 이용해 넣으면 된다.
-	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	stServerAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	int nRet = bind(m_listenSocket, reinterpret_cast<SOCKADDR*>(&serverAddr), sizeof(SOCKADDR_IN));
+	int nRet = bind(m_listenSocket, reinterpret_cast<SOCKADDR*>(&stServerAddr), sizeof(SOCKADDR_IN));
 	if (nRet != 0)
 	{
-		std::cerr << "[에러] bind()함수 실패 : " << GetLastError() << std::endl;
+		std::cerr << "[에러] bind()함수 실패 : " << WSAGetLastError() << std::endl;
 		return false;
 	}
 
-	nRet = listen(m_listenSocket, SOMAXCONN);
+	nRet = listen(m_listenSocket, 5);
 	if (nRet != 0)
 	{
-		std::cerr << "[에러] listen()함수 실패 : " << GetLastError() << std::endl;
+		std::cerr << "[에러] listen()함수 실패 : " << WSAGetLastError() << std::endl;
 		return false;
 	}
 
@@ -68,7 +69,8 @@ bool IOCP::StartServer(const UINT32& maxClientCount)
 {
 	createClient(maxClientCount);
 
-	m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
+	m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 
+		nullptr, NULL, MAX_WORKERTHREAD);
 
 	if (m_IOCPHandle == nullptr)
 	{
@@ -79,13 +81,14 @@ bool IOCP::StartServer(const UINT32& maxClientCount)
 	bool bRet = createWorkerThread();
 	if (bRet == false)
 	{
-		std::cerr << "[에러] createWorkerThread()함수 실패" << std::endl;
+		std::cerr << "[에러] createWorkerThread()함수 실패\n" << std::endl;
 		return false;
 	}
+
 	bRet = createAccepterThread();
 	if (bRet == false)
 	{
-		std::cerr << "[에러] createAccepterThread()함수 실패" << std::endl;
+		std::cerr << "[에러] createAccepterThread()함수 실패\n" << std::endl;
 		return false;
 	}
 
@@ -99,6 +102,7 @@ bool IOCP::StartServer(const UINT32& maxClientCount)
 void IOCP::DestroyThread()
 {
 	m_isSenderRun = false;
+
 	if (m_senderThread.joinable())
 	{
 		m_senderThread.join();
@@ -111,6 +115,8 @@ void IOCP::DestroyThread()
 	{
 		m_accepterThread.join();
 	}
+
+
 	m_isWorkerRun = false;
 	CloseHandle(m_IOCPHandle);
 
@@ -182,6 +188,7 @@ ClientInfo* IOCP::getEmptyClientInfo()
 			return client;
 		}
 	}
+
 	return nullptr;
 }
 
@@ -223,7 +230,7 @@ void IOCP::wokerThread()
 		bSuccess = GetQueuedCompletionStatus(
 			m_IOCPHandle, 
 			&dwIoSize, 
-			(PULONG_PTR)&pClientInfo, 
+			reinterpret_cast<PULONG_PTR>(&pClientInfo), 
 			&lpOverlapped, 
 			INFINITE
 		);
@@ -275,7 +282,7 @@ void IOCP::accepterThread()
 		//접속 받을 구조체의 인덱스 읽기
 		ClientInfo* pClientInfo = getEmptyClientInfo();
 
-		if (!pClientInfo)
+		if (pClientInfo == nullptr)
 		{
 			std::cerr << "클라이언트 FULL!" << std::endl;
 			return;
@@ -289,7 +296,7 @@ void IOCP::accepterThread()
 			continue;
 		}
 
-		if (pClientInfo->OnConnect(m_IOCPHandle,newSocket) == false)
+		if (pClientInfo->OnConnect(m_IOCPHandle, newSocket) == false)
 		{
 			pClientInfo->Close(true);
 			return; //contiune에서 리턴으로 바뀐건지 실수인지 모름 

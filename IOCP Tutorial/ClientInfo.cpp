@@ -40,10 +40,10 @@ void ClientInfo::Close(bool bIsForce_)
 
 	shutdown(m_socketClient, SD_BOTH);
 
-	setsockopt(m_socketClient, SOL_SOCKET, SO_LINGER, reinterpret_cast<char*>(&stLinger), sizeof(stLinger));
+	setsockopt(m_socketClient, SOL_SOCKET, SO_LINGER,
+		reinterpret_cast<char*>(&stLinger), sizeof(stLinger));
 
 	closesocket(m_socketClient);
-
 	m_socketClient = INVALID_SOCKET;
 }
 
@@ -148,12 +148,13 @@ bool ClientInfo::SendIO()
 		std::cerr << "[에러] WSASend 함수 실패: " << WSAGetLastError();
 		return false;
 	}
-	m_SendPos = 0;
 
+	m_SendPos = 0;
 	return true;
 }
 
 void ClientInfo::SendCompleted(const UINT32& dataSize_)
 {
+	m_IsSending = false;
 	std::cout << "[송신 완료] bytes : " << dataSize_ << std::endl;
 }

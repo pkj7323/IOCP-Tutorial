@@ -5,27 +5,31 @@
 
 //TODO: 5 단계. 1-Send 구현하기
 // 버퍼에 쌓아 놓고, send 스레드에서 보내기.
+//TODO: 문제 발생 클라이언트에서 두번정도 메세지 보내면 다안보내지는 버그 발생 테스트 코드는 잘돌아감
+/// 내가짠 코드만 문제
 
 class IOCP
 {
-	SOCKET						m_listenSocket;
-
 	std::vector<ClientInfo*>	m_clientInfos;
+	//클라이언트 정보 저장 구조체
 
-
-
-	bool						m_isWorkerRun;
-	std::vector<std::thread>	m_workerThreads;
-
-	bool						m_isAccepterRun;
-	std::thread					m_accepterThread;
-
-	bool						m_isSenderRun;
-	std::thread					m_senderThread;
-
-	HANDLE						m_IOCPHandle;
+	SOCKET						m_listenSocket;
+	//클라이언트의 접속을 받기위한 리슨 소켓
 
 	int							m_clientCnt;
+	//접속된 클라이언트 수
+
+	bool						m_isWorkerRun;//워커 스레드가 동작플래그
+	std::vector<std::thread>	m_workerThreads;//워커 스레드
+
+	bool						m_isAccepterRun;//어셉터 스레드가 동작플래그
+	std::thread					m_accepterThread;//어셉터 스레드
+
+	bool						m_isSenderRun;//보내는 스레드 동작플래그
+	std::thread					m_senderThread;//보내는 스레드
+
+	HANDLE						m_IOCPHandle;//IOCP 핸들
+
 public:
 	IOCP();
 	virtual ~IOCP();
