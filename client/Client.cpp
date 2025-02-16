@@ -52,12 +52,17 @@ int main()
 		std::string sendMsg;
     	std::cout << "서버로 전송할 메시지를 입력하세요: ";
     	std::getline(std::cin, sendMsg);
-    	sendMsg.append("\0");
-    	send(clientSocket, sendMsg.c_str(), sendMsg.size(), 0);
-		if (sendMsg == "quit")
-		{
+
+        if (sendMsg == "quit")
+        {
             break;
+        }
+		if (sendMsg.empty())
+		{
+            continue;
 		}
+    	send(clientSocket, sendMsg.c_str(), sendMsg.size(), 0);
+		
 
 
     	// 서버로부터 메시지 수신
