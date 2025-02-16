@@ -15,7 +15,7 @@ void ClientInfo::Init(const UINT32& index)
 
 void ClientInfo::Clear()
 {
-	
+	mSend
 }
 
 void ClientInfo::Close(bool bIsForce_)

@@ -2,9 +2,9 @@
 #include "Define.h"
 #include "ClientInfo.h"
 
-//TODO: 4 단계. 네트워크와 로직(패킷 or 요청) 처리 각각의 스레드로 분리하기
-//Send를 Recv와 다른 스레드에서 하기
-//send를 연속으로 보낼 수 있는 구조가 되어야 한다.
+//TODO: 5 단계. 1-Send 구현하기
+// 버퍼에 쌓아 놓고, send 스레드에서 보내기.
+
 class IOCP
 {
 	SOCKET						m_listenSocket;

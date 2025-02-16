@@ -16,7 +16,6 @@ void EchoServer::OnReceive(const UINT32& clientIndex, const UINT32& size, char* 
 	std::cout << "[OnReceive] 클라이언트: Index(" << clientIndex << "), dataSize(" << size << ")\n";
 
 	PacketData packet;
-
 	packet.Set(clientIndex, size, pData);
 
 	std::lock_guard<std::mutex> lock(mLock);
@@ -60,17 +59,18 @@ void EchoServer::processPacket()
 
 PacketData EchoServer::dequePacketData()
 {
+	PacketData packetData;
+
 	std::lock_guard<std::mutex> lock(mLock);
 	if (mPacketDataQueue.empty())
 	{
 		return PacketData();
 	}
 
-	PacketData packet;
-	packet.Set(mPacketDataQueue.front());
+	packetData.Set(mPacketDataQueue.front());
 
 	mPacketDataQueue.front().Release();
 	mPacketDataQueue.pop_front();
 
-	return packet;
+	return packetData;
 }
