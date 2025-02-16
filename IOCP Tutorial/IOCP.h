@@ -1,4 +1,5 @@
 #pragma once
+#include "pch.h"
 #include "Define.h"
 #include "ClientInfo.h"
 
@@ -8,12 +9,22 @@
 class IOCP
 {
 	SOCKET						m_listenSocket;
-	std::vector<ClientInfo>		m_clientInfos;
-	std::vector<std::thread>	m_workerThreads;
-	std::thread					m_accepterThread;
+
+	std::vector<ClientInfo*>	m_clientInfos;
+
+
+
 	bool						m_isWorkerRun;
+	std::vector<std::thread>	m_workerThreads;
+
 	bool						m_isAccepterRun;
+	std::thread					m_accepterThread;
+
+	bool						m_isSenderRun;
+	std::thread					m_senderThread;
+
 	HANDLE						m_IOCPHandle;
+
 	int							m_clientCnt;
 public:
 	IOCP();
@@ -43,14 +54,16 @@ private:
 
 	bool createAccepterThread();
 
+	void createSendThread();
+
 	//사용하지 않는 클라이언트 정보 구조체를 반환한다.
 	ClientInfo* getEmptyClientInfo();
 
+	void closeSocket(ClientInfo* pClientInfo, bool bIsForce = false);
 
 	void wokerThread();
 
 	void accepterThread();
 
-	void closeClient(ClientInfo* pClientInfo, bool bIsForce = false);
-
+	void SendThread();
 };

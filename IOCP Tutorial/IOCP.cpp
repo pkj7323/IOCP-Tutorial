@@ -1,7 +1,9 @@
+#include "pch.h"
 #include "IOCP.h"
 
-IOCP::IOCP() : m_listenSocket{ INVALID_SOCKET }, m_isWorkerRun{ true },
-m_isAccepterRun{ true }, m_IOCPHandle{ INVALID_HANDLE_VALUE }, m_clientCnt{ 0 }
+IOCP::IOCP() : m_listenSocket{ INVALID_SOCKET }, m_isWorkerRun{ false },
+m_isAccepterRun{ false }, m_isSenderRun{ false }, m_IOCPHandle{ INVALID_HANDLE_VALUE },
+m_clientCnt{ 0 }
 {
 }
 
@@ -86,6 +88,9 @@ bool IOCP::StartServer(const UINT32& maxClientCount)
 		std::cerr << "[에러] createAccepterThread()함수 실패" << std::endl;
 		return false;
 	}
+
+	createSendThread();
+
 	std::cout << "서버시작" << std::endl;
 	return true;
 
@@ -93,6 +98,19 @@ bool IOCP::StartServer(const UINT32& maxClientCount)
 
 void IOCP::DestroyThread()
 {
+	m_isSenderRun = false;
+	if (m_senderThread.joinable())
+	{
+		m_senderThread.join();
+	}
+	
+	m_isAccepterRun = false;
+	closesocket(m_listenSocket);
+
+	if (m_accepterThread.joinable())
+	{
+		m_accepterThread.join();
+	}
 	m_isWorkerRun = false;
 	CloseHandle(m_IOCPHandle);
 
@@ -103,20 +121,9 @@ void IOCP::DestroyThread()
 			th.join();
 		}
 	}
-	m_isAccepterRun = false;
-	closesocket(m_listenSocket);
-
-	if (m_accepterThread.joinable())
-	{
-		m_accepterThread.join();
-	}
 
 }
 
-ClientInfo* IOCP::GetClientInfo(const UINT32& sessionIndex)
-{
-	return &m_clientInfos[sessionIndex];
-}
 
 bool IOCP::SendMsg(const UINT32& sessionIndex_, const UINT32& dataSize_, char* pData)
 {
@@ -128,15 +135,19 @@ void IOCP::createClient(const UINT32& maxClientCount)
 {
 	for (UINT32 i = 0; i < maxClientCount; ++i)
 	{
-		m_clientInfos.emplace_back();
-		m_clientInfos[i].Init(i);
+		auto client = new ClientInfo();
+		client->Init(i);
+
+		m_clientInfos.push_back(client);
 	}
 }
 
 
 bool IOCP::createWorkerThread()
 {
-	for (int i = 0; i < MAX_WORKERTHREAD; i++)
+	m_isWorkerRun = true;
+
+	for (UINT32 i = 0; i < MAX_WORKERTHREAD; i++)
 	{
 		m_workerThreads.emplace_back([this]() { wokerThread(); });
 	}
@@ -147,27 +158,46 @@ bool IOCP::createWorkerThread()
 
 bool IOCP::createAccepterThread()
 {
+	m_isAccepterRun = true;
 	m_accepterThread = std::thread([this]() { accepterThread(); });
 
 	std::cout << "AccepterThread 시작..\n";
 	return true;
 }
 
+void IOCP::createSendThread()
+{
+	m_isSenderRun = true;
+	m_senderThread = std::thread([this]() { SendThread(); });
+	std::cout << "SenderThread 시작..\n";
+}
+
 
 ClientInfo* IOCP::getEmptyClientInfo()
 {
-	for(auto& client : m_clientInfos)
+	for(auto client : m_clientInfos)
 	{
-		if (client.IsConnected() == false)
+		if (client->IsConnected() == false)
 		{
-			return &client;
+			return client;
 		}
 	}
 	return nullptr;
 }
 
+ClientInfo* IOCP::GetClientInfo(const UINT32& sessionIndex)
+{
+	return m_clientInfos[sessionIndex];
+}
 
+void IOCP::closeSocket(ClientInfo* pClientInfo, bool bIsForce)
+{
+	auto clientIndex = pClientInfo->GetIndex();
 
+	pClientInfo->Close(bIsForce);
+
+	OnClose(clientIndex);
+}
 
 void IOCP::wokerThread()
 {
@@ -212,7 +242,7 @@ void IOCP::wokerThread()
 		if (!bSuccess || (bSuccess && dwIoSize == 0))
 		{
 			//std::cout << "socket(" << static_cast<int>(pClientInfo->GetSocket()) << ") 접속 끊김\n";
-			closeClient(pClientInfo);
+			closeSocket(pClientInfo);
 			continue;
 		}
 
@@ -226,8 +256,6 @@ void IOCP::wokerThread()
 		}
 		else if (pOverlappedEx->m_eOperation == IOOperation::send)
 		{
-			delete[] pOverlappedEx->m_wsaBuf.buf;
-			delete pOverlappedEx;
 			pClientInfo->SendCompleted(dwIoSize);
 		}
 		else
@@ -264,7 +292,7 @@ void IOCP::accepterThread()
 		if (pClientInfo->OnConnect(m_IOCPHandle,newSocket) == false)
 		{
 			pClientInfo->Close(true);
-			continue;
+			return; //contiune에서 리턴으로 바뀐건지 실수인지 모름 
 		}
 		/*
 		std::array<char, 32> strIP={0};
@@ -277,11 +305,19 @@ void IOCP::accepterThread()
 	}
 }
 
-void IOCP::closeClient(ClientInfo* pClientInfo, bool bIsForce)
+void IOCP::SendThread()
 {
-	auto clientIndex = pClientInfo->GetIndex();
-
-	pClientInfo->Close(bIsForce);
-
-	OnClose(clientIndex);
+	while (m_isSenderRun)
+	{
+		for (auto client : m_clientInfos)
+		{
+			if (client->IsConnected() == false)
+			{
+				continue;
+			}
+			client->SendIO();
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
 }
+

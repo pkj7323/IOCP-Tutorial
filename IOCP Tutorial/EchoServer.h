@@ -1,7 +1,6 @@
 #pragma once
 #include "IOCP.h"
-#include <deque>
-#include <mutex>
+
 #include "Packet.h"
 
 class EchoServer : public IOCP
