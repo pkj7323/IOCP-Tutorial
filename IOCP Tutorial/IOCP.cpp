@@ -2,7 +2,7 @@
 #include "IOCP.h"
 
 IOCP::IOCP() : m_listenSocket{ INVALID_SOCKET }, m_clientCnt{0},
-               m_isWorkerRun{false}, m_isAccepterRun{false},
+               m_isWorkerRun{true}, m_isAccepterRun{true},
                m_IOCPHandle{INVALID_HANDLE_VALUE}
 {
 }
@@ -12,7 +12,7 @@ IOCP::~IOCP()
 	WSACleanup();
 }
 
-bool IOCP::InitSocket()
+bool IOCP::Init(const UINT32& maxIOWorkerThreadCnt_)
 {
 	WSADATA wsaData;
 
@@ -30,6 +30,8 @@ bool IOCP::InitSocket()
 		std::cerr << "[에러] WSASocket : " << WSAGetLastError() << std::endl;
 		return false;
 	}
+
+	MaxIOWorkerThreadCnt = maxIOWorkerThreadCnt_;
 
 	std::cout << "소켓 연결 성공\n";
 	return true;
@@ -60,6 +62,21 @@ bool IOCP::BindandListen(int nBindPort)
 		return false;
 	}
 
+	m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr,
+		NULL, MaxIOWorkerThreadCnt);
+	if (m_IOCPHandle == nullptr)
+	{
+		std::cerr << "[에러] CreateIoCompletionPort()함수 실패 : " << GetLastError() << std::endl;
+		return false;
+	}
+	auto hIOCP = CreateIoCompletionPort(reinterpret_cast<HANDLE>(m_listenSocket), 
+		m_IOCPHandle,0, 0);
+	if (hIOCP == nullptr)
+	{
+		std::cerr << "[에러] listen socket IOCP bind 실패: " << WSAGetLastError() << std::endl;
+		return false;
+	}
+
 	std::cout << "서버 등록 성공..\n";
 	return true;
 }
@@ -67,15 +84,6 @@ bool IOCP::BindandListen(int nBindPort)
 bool IOCP::StartServer(const UINT32& maxClientCount)
 {
 	createClient(maxClientCount);
-
-	m_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 
-		nullptr, NULL, MAX_WORKERTHREAD);
-
-	if (m_IOCPHandle == nullptr)
-	{
-		std::cerr << "[에러] CreateIoCompletionPort()함수 실패 : " << GetLastError() << std::endl;
-		return false;
-	}
 
 	bool bRet = createWorkerThread();
 	if (bRet == false)
@@ -132,19 +140,14 @@ void IOCP::createClient(const UINT32& maxClientCount)
 {
 	for (UINT32 i = 0; i < maxClientCount; ++i)
 	{
-		auto client = new ClientInfo();
-		client->Init(i);
-
-		m_clientInfos.push_back(client);
+		m_clientInfos.emplace_back(new ClientInfo(i, m_IOCPHandle));
 	}
 }
 
 
 bool IOCP::createWorkerThread()
 {
-	m_isWorkerRun = true;
-
-	for (UINT32 i = 0; i < MAX_WORKERTHREAD; i++)
+	for (UINT32 i = 0; i < MaxIOWorkerThreadCnt; i++)
 	{
 		m_workerThreads.emplace_back([this]() { wokerThread(); });
 	}
@@ -152,10 +155,21 @@ bool IOCP::createWorkerThread()
 	std::cout << "WokerThread 시작..\n";
 	return true;
 }
+ClientInfo* IOCP::getEmptyClientInfo()
+{
+	for(auto& client : m_clientInfos)
+	{
+		if (client->IsConnected() == false)
+		{
+			return client;
+		}
+	}
+
+	return nullptr;
+}
 
 bool IOCP::createAccepterThread()
 {
-	m_isAccepterRun = true;
 	m_accepterThread = std::thread([this]() { accepterThread(); });
 
 	std::cout << "AccepterThread 시작..\n";
@@ -185,10 +199,10 @@ void IOCP::wokerThread()
 
 		bSuccess = GetQueuedCompletionStatus(
 			m_IOCPHandle, 
-			&dwIoSize, 
-			reinterpret_cast<PULONG_PTR>(&pClientInfo), 
-			&lpOverlapped, 
-			INFINITE
+			&dwIoSize, //실제로 전송될 바이트
+			reinterpret_cast<PULONG_PTR>(&pClientInfo), //사용자 데이터 completion key
+			&lpOverlapped, //완료된 I/O작업의 정보
+			INFINITE//대기할 시간
 		);
 
 		if (bSuccess && dwIoSize == 0 && lpOverlapped == nullptr)
@@ -201,23 +215,37 @@ void IOCP::wokerThread()
 		{
 			continue;
 		}
+		auto pOverlappedEx = reinterpret_cast<OverlappedEx*>(lpOverlapped);
 
-		if (!bSuccess || (bSuccess && dwIoSize == 0))
+
+		if (!bSuccess || (0 == dwIoSize && IOOperation::ACCEPT != pOverlappedEx->m_eOperation))
 		{
-			//std::cout << "socket(" << static_cast<int>(pClientInfo->GetSocket()) << ") 접속 끊김\n";
+			//std::cout << "socket(" << static_cast<int>(pClientInfo->GetIndex()) << ")에서 예외상황\n";
 			closeSocket(pClientInfo);
 			continue;
 		}
 
-		auto pOverlappedEx = reinterpret_cast<OverlappedEx*>(lpOverlapped);
+		if (pOverlappedEx->m_eOperation == IOOperation::ACCEPT)
+		{
+			pClientInfo = GetClientInfo(pOverlappedEx->m_sessionIndex);
+			if (pClientInfo->AcceptCompletion())
+			{
+				++m_clientCnt;
 
-		if (pOverlappedEx->m_eOperation == IOOperation::recv)
+				OnConnect(pClientInfo->GetIndex());
+			}
+			else
+			{
+				closeSocket(pClientInfo, true);
+			}
+		}
+		else if (pOverlappedEx->m_eOperation == IOOperation::RECV)
 		{
 			OnReceive(pClientInfo->GetIndex(), dwIoSize, pClientInfo->GetRecvBuffer());
 
 			pClientInfo->BindRecv();
 		}
-		else if (pOverlappedEx->m_eOperation == IOOperation::send)
+		else if (pOverlappedEx->m_eOperation == IOOperation::SEND)
 		{
 			pClientInfo->SendCompleted(dwIoSize);
 		}
@@ -230,56 +258,33 @@ void IOCP::wokerThread()
 
 void IOCP::accepterThread()
 {
-	SOCKADDR_IN clientAddr;
-	int addrLen = sizeof(SOCKADDR_IN);
-
-	while(m_isAccepterRun)
+	while (m_isAccepterRun)
 	{
-		//접속 받을 구조체의 인덱스 읽기
-		ClientInfo* pClientInfo = getEmptyClientInfo();
+		auto curTimeSec = std::chrono::duration_cast<std::chrono::seconds>(
+			std::chrono::steady_clock::now().time_since_epoch()).count();
 
-		if (pClientInfo == nullptr)
+		for (auto client : m_clientInfos)
 		{
-			std::cerr << "클라이언트 FULL!" << std::endl;
-			return;
+			if (client->IsConnected())
+			{
+				continue;
+			}
+			if (static_cast<UINT64>(curTimeSec) < client->GetLastestClosedTimeSec())
+			{
+				continue;
+			}
+			auto diff = curTimeSec - client->GetLastestClosedTimeSec();
+			if (diff <= RE_USE_SESSION_WAIT_TIMESEC)
+			{
+				continue;
+			}
+			client->PostAccept(m_listenSocket, curTimeSec);
 		}
 
-		//클라이언트 접속 요청이 들어올때까지 기다린다.
-		auto newSocket = accept(m_listenSocket, reinterpret_cast<SOCKADDR*>(&clientAddr), &addrLen);
-
-		if (newSocket == INVALID_SOCKET)
-		{
-			continue;
-		}
-
-		if (pClientInfo->OnConnect(m_IOCPHandle, newSocket) == false)
-		{
-			pClientInfo->Close(true);
-			return; //contiune에서 리턴으로 바뀐건지 실수인지 모름 
-		}
-		/*
-		std::array<char, 32> strIP={0};
-		inet_ntop(AF_INET, (&clientAddr.sin_addr), strIP.data(), strIP.size() - 1);
-		std::cout << "클라이언트 접속 : " << strIP.data() << "SOCKET: " << static_cast<int>(pClientInfo->m_socketClient) << std::endl;*/
-
-		OnConnect(pClientInfo->GetIndex());
-
-		++m_clientCnt;
+		std::this_thread::sleep_for(std::chrono::milliseconds(32));
 	}
 }
 
-ClientInfo* IOCP::getEmptyClientInfo()
-{
-	for(auto client : m_clientInfos)
-	{
-		if (client->IsConnected() == false)
-		{
-			return client;
-		}
-	}
-
-	return nullptr;
-}
 
 
 void IOCP::closeSocket(ClientInfo* pClientInfo, bool bIsForce)

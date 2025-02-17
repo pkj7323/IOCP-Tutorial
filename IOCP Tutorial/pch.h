@@ -1,9 +1,12 @@
 #pragma once
 #include <winsock2.h>
+#include <MSWSock.h>
 #include <Ws2tcpip.h>
-#pragma comment(lib, "ws2_32")
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "mswsock.lib")
 #include <iostream>
 
+#include <chrono>
 #include <thread>
 #include <vector>
 #include <array>

@@ -3,11 +3,16 @@
 #include "Define.h"
 #include "ClientInfo.h"
 
-//6 단계. 1 - Send 구현하기
-//queue에 담아 놓고 순차적으로 보내기.
+/*TODO:
+7 단계.비동기 Accept 사용하기
+6단계까지는 Accept 처리를 동기 I / O로 했다.이것을 비동기I / O로 바꾼다.이로써 네트워크 동작이 모두 비동기 I / O가 된다
+6단계에서 이어서 기능을 구현한다.*/
+
 
 class IOCP
 {
+	UINT32						MaxIOWorkerThreadCnt = 0;
+
 	std::vector<ClientInfo*>	m_clientInfos;
 	//클라이언트 정보 저장 구조체
 
@@ -28,7 +33,7 @@ class IOCP
 public:
 	IOCP();
 	virtual ~IOCP();
-	bool InitSocket();
+	bool Init(const UINT32& maxIOWorkerThreadCnt_);
 
 	//------서버용 함수-------
 	//서버의 주소정보를 소켓과 연결시키고 접속 요청을 받기 위해 
