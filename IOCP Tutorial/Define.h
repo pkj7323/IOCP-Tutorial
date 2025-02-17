@@ -19,5 +19,9 @@ struct OverlappedEx
 	SOCKET        m_socketClient;
 	WSABUF        m_wsaBuf;
 	IOOperation   m_eOperation;
+	~OverlappedEx()
+	{
+		delete[] m_wsaBuf.buf;
+	}
 };
 

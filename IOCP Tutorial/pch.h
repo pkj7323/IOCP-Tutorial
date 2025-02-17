@@ -9,6 +9,6 @@
 #include <array>
 #include <windows.h>
 #include <string>
-#include <deque>
+#include <queue>
 #include <mutex>
 #include "Define.h"

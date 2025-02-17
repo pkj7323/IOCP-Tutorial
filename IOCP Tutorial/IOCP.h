@@ -3,10 +3,8 @@
 #include "Define.h"
 #include "ClientInfo.h"
 
-//TODO: 5 단계. 1-Send 구현하기
-// 버퍼에 쌓아 놓고, send 스레드에서 보내기.
-//TODO: 문제 발생 클라이언트에서 두번정도 메세지 보내면 다안보내지는 버그 발생 테스트 코드는 잘돌아감
-/// 내가짠 코드만 문제
+//6 단계. 1 - Send 구현하기
+//queue에 담아 놓고 순차적으로 보내기.
 
 class IOCP
 {
@@ -25,9 +23,6 @@ class IOCP
 	bool						m_isAccepterRun;//어셉터 스레드가 동작플래그
 	std::thread					m_accepterThread;//어셉터 스레드
 
-	bool						m_isSenderRun;//보내는 스레드 동작플래그
-	std::thread					m_senderThread;//보내는 스레드
-
 	HANDLE						m_IOCPHandle;//IOCP 핸들
 
 public:
@@ -44,7 +39,6 @@ public:
 
 	void DestroyThread();
 
-	ClientInfo* GetClientInfo(const UINT32& sessionIndex);
 
 	bool SendMsg(const UINT32& sessionIndex_, const UINT32& dataSize_, char* pData);
 
@@ -58,7 +52,11 @@ private:
 
 	bool createAccepterThread();
 
-	void createSendThread();
+	ClientInfo* GetClientInfo(const UINT32& sessionIndex)
+	{
+		return m_clientInfos[sessionIndex];
+	}
+
 
 	//사용하지 않는 클라이언트 정보 구조체를 반환한다.
 	ClientInfo* getEmptyClientInfo();
@@ -69,5 +67,5 @@ private:
 
 	void accepterThread();
 
-	void SendThread();
+
 };

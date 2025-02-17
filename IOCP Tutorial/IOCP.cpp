@@ -1,12 +1,11 @@
 #include "pch.h"
 #include "IOCP.h"
 
-IOCP::IOCP() : m_listenSocket{ INVALID_SOCKET }, m_isWorkerRun{ false },
-m_isAccepterRun{ false }, m_isSenderRun{ false }, m_IOCPHandle{ INVALID_HANDLE_VALUE },
-m_clientCnt{ 0 }
+IOCP::IOCP() : m_listenSocket{ INVALID_SOCKET }, m_clientCnt{0},
+               m_isWorkerRun{false}, m_isAccepterRun{false},
+               m_IOCPHandle{INVALID_HANDLE_VALUE}
 {
 }
-
 
 IOCP::~IOCP()
 {
@@ -92,8 +91,6 @@ bool IOCP::StartServer(const UINT32& maxClientCount)
 		return false;
 	}
 
-	createSendThread();
-
 	std::cout << "서버시작" << std::endl;
 	return true;
 
@@ -101,12 +98,6 @@ bool IOCP::StartServer(const UINT32& maxClientCount)
 
 void IOCP::DestroyThread()
 {
-	m_isSenderRun = false;
-
-	if (m_senderThread.joinable())
-	{
-		m_senderThread.join();
-	}
 	
 	m_isAccepterRun = false;
 	closesocket(m_listenSocket);
@@ -169,41 +160,6 @@ bool IOCP::createAccepterThread()
 
 	std::cout << "AccepterThread 시작..\n";
 	return true;
-}
-
-void IOCP::createSendThread()
-{
-	m_isSenderRun = true;
-	m_senderThread = std::thread([this]() { SendThread(); });
-	std::cout << "SenderThread 시작..\n";
-}
-
-
-ClientInfo* IOCP::getEmptyClientInfo()
-{
-	for(auto client : m_clientInfos)
-	{
-		if (client->IsConnected() == false)
-		{
-			return client;
-		}
-	}
-
-	return nullptr;
-}
-
-ClientInfo* IOCP::GetClientInfo(const UINT32& sessionIndex)
-{
-	return m_clientInfos[sessionIndex];
-}
-
-void IOCP::closeSocket(ClientInfo* pClientInfo, bool bIsForce)
-{
-	auto clientIndex = pClientInfo->GetIndex();
-
-	pClientInfo->Close(bIsForce);
-
-	OnClose(clientIndex);
 }
 
 void IOCP::wokerThread()
@@ -312,19 +268,27 @@ void IOCP::accepterThread()
 	}
 }
 
-void IOCP::SendThread()
+ClientInfo* IOCP::getEmptyClientInfo()
 {
-	while (m_isSenderRun)
+	for(auto client : m_clientInfos)
 	{
-		for (auto client : m_clientInfos)
+		if (client->IsConnected() == false)
 		{
-			if (client->IsConnected() == false)
-			{
-				continue;
-			}
-			client->SendIO();
+			return client;
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
+
+	return nullptr;
 }
+
+
+void IOCP::closeSocket(ClientInfo* pClientInfo, bool bIsForce)
+{
+	auto clientIndex = pClientInfo->GetIndex();
+
+	pClientInfo->Close(bIsForce);
+
+	OnClose(clientIndex);
+}
+
 

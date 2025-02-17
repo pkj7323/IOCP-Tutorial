@@ -2,10 +2,9 @@
 #include "ClientInfo.h"
 
 ClientInfo::ClientInfo()
-	: m_nIndex{ -1 }, m_socketClient{ INVALID_SOCKET }, m_IsSending{ false }, m_SendPos{ 0 }
+	: m_nIndex{ -1 }, m_socketClient{ INVALID_SOCKET }
 {
 	ZeroMemory(&m_RecvOverlappedEx, sizeof(OverlappedEx));
-	ZeroMemory(&m_SendOverlappedEx, sizeof(OverlappedEx));
 }
 
 
@@ -47,11 +46,6 @@ void ClientInfo::Close(bool bIsForce_)
 	m_socketClient = INVALID_SOCKET;
 }
 
-void ClientInfo::Clear()
-{
-	m_SendPos = 0;
-	m_IsSending = false;
-}
 
 bool ClientInfo::BindIOCompletionPort(HANDLE iocpHandle_)
 {
@@ -101,60 +95,56 @@ bool ClientInfo::BindRecv()
 
 bool ClientInfo::SendMsg(const UINT32& dataSize_, char* pMsg)
 {
-	std::lock_guard<std::mutex> lock(m_Lock);
-	if (m_SendPos + dataSize_ > MAX_SOCK_SENDBUF)
-	{
-		m_SendPos = 0;
-	}
-
-	auto pSendBuffer = &m_SendBuffer[m_SendPos];
-
-	CopyMemory(pSendBuffer, pMsg, dataSize_);
-	m_SendPos += dataSize_;
-
-	return true;
-}
-
-bool ClientInfo::SendIO()
-{
-	if (m_SendPos <= 0 || m_IsSending)
-	{
-		return true;
-	}
+	
+	auto sendOverlappedEx = std::make_unique<OverlappedEx>();
+	std::memset(sendOverlappedEx.get(), 0, sizeof(OverlappedEx));
+	sendOverlappedEx->m_wsaBuf.len = dataSize_;
+	sendOverlappedEx->m_wsaBuf.buf = new char[dataSize_];
+    std::copy_n(pMsg, dataSize_, sendOverlappedEx->m_wsaBuf.buf);
+	sendOverlappedEx->m_eOperation = IOOperation::send;
 
 	std::lock_guard<std::mutex> lock(m_Lock);
+	m_sendDataQ.push(std::move(sendOverlappedEx));
 
-	m_IsSending = true;
-
-	CopyMemory(m_SendingBuffer, &m_SendBuffer[0], m_SendPos);
-
-	//overlapped I/O를 위한 초기화
-	m_SendOverlappedEx.m_wsaBuf.len = m_SendPos;
-	m_SendOverlappedEx.m_wsaBuf.buf = &m_SendingBuffer[0];
-	m_SendOverlappedEx.m_eOperation = IOOperation::send;
-
-	DWORD dwRecvNumBytes = 0;
-	int nRet = WSASend
-	(
-		m_socketClient,
-		&m_SendOverlappedEx.m_wsaBuf,
-		1,
-		&dwRecvNumBytes,
-		0,
-		reinterpret_cast<LPWSAOVERLAPPED>(&m_SendOverlappedEx),
-		nullptr);
-	if (nRet == SOCKET_ERROR && WSAGetLastError() != ERROR_IO_PENDING)
+	if (m_sendDataQ.size() == 1)
 	{
-		std::cerr << "[에러] WSASend 함수 실패: " << WSAGetLastError();
-		return false;
+		SendIO();
 	}
 
-	m_SendPos = 0;
 	return true;
 }
 
 void ClientInfo::SendCompleted(const UINT32& dataSize_)
 {
-	m_IsSending = false;
 	std::cout << "[송신 완료] bytes : " << dataSize_ << std::endl;
+
+	std::lock_guard<std::mutex> lock(m_Lock);
+	m_sendDataQ.pop();
+
+	if (m_sendDataQ.empty() == false)
+	{
+		SendIO();
+	}
+}
+
+bool ClientInfo::SendIO()
+{
+	auto sendOverlappedEx = m_sendDataQ.front().get();
+
+	DWORD dwSendNumBytes = 0;
+	int nRet = WSASend
+	(
+		m_socketClient,
+		&sendOverlappedEx->m_wsaBuf,
+		1,
+		&dwSendNumBytes,
+		0,
+		reinterpret_cast<LPWSAOVERLAPPED>(sendOverlappedEx),
+		nullptr);
+	if (nRet == SOCKET_ERROR && WSAGetLastError() != ERROR_IO_PENDING)
+	{
+		std::cerr << "[에러] WSASend 함수 실패: " << WSAGetLastError() << std::endl;
+		return false;
+	}
+	return true;
 }
