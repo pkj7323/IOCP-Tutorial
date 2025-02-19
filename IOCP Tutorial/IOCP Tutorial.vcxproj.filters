@@ -16,6 +16,9 @@
     <Filter Include="ServerNetwork">
       <UniqueIdentifier>{c9dbc863-fb5c-453c-bb52-348136a887c6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ChatServer">
+      <UniqueIdentifier>{02a2d952-a113-4f1d-a8fd-da7c95650728}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EchoServer.h">
@@ -32,6 +35,9 @@
     </ClInclude>
     <ClInclude Include="pch.h">
       <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="ChatServer.h">
+      <Filter>ChatServer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -52,6 +58,9 @@
     </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>헤더 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ChatServer.cpp">
+      <Filter>ChatServer</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

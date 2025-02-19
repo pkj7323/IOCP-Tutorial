@@ -47,9 +47,9 @@ public:
 
 	bool SendMsg(const UINT32& sessionIndex_, const UINT32& dataSize_, char* pData);
 
-	virtual void OnConnect(const UINT32& clientIndex) {}
-	virtual void OnClose(const UINT32& clientIndex) {}
-	virtual void OnReceive(const UINT32& clientIndex, const UINT32& size, char* pData) {}
+	virtual void OnConnect(const UINT32& clientIndex) = 0;
+	virtual void OnClose(const UINT32& clientIndex) = 0;
+	virtual void OnReceive(const UINT32& clientIndex, const UINT32& size, char* pData) = 0;
 private:
 	void createClient(const UINT32& maxClientCount);
 

@@ -1,30 +1,17 @@
 #pragma once
 #include "IOCP.h"
-#include "Packet.h"
 
-class EchoServer : public IOCP
+class ChatServer : public IOCP
 {
-	bool mIsRunProcessThread = false;
-
-	std::thread mProcessThread;
-
-	std::mutex mLock;
-	std::deque<PacketData> mPacketDataQueue;
+	//패킷 먼저 정의 해야함
+	std::unique_ptr<PacketManager> m_packetManager;
 public:
-	EchoServer() = default;
-	virtual ~EchoServer() = default;
+	ChatServer() = default;
+	virtual ~ChatServer() = default;
 	virtual void OnConnect(const UINT32& clientIndex) override;
 	virtual void OnClose(const UINT32& clientIndex) override;
 	virtual void OnReceive(const UINT32& clientIndex, const UINT32& size, char* pData) override;
-
 	void Run(const uint32_t& maxClient);
-
 	void End();
-
-private:
-	void processPacket();
-
-	PacketData dequePacketData();
-
-
 };
+
