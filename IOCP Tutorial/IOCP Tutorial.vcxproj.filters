@@ -19,6 +19,12 @@
     <Filter Include="ChatServer">
       <UniqueIdentifier>{02a2d952-a113-4f1d-a8fd-da7c95650728}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Packet">
+      <UniqueIdentifier>{7caa34fe-84dd-4b51-ac6d-617f9fcb8076}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="User">
+      <UniqueIdentifier>{c8bb26f6-244a-4fc1-ae07-d5c5389dd97c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EchoServer.h">
@@ -30,14 +36,29 @@
     <ClInclude Include="ClientInfo.h">
       <Filter>ServerNetwork</Filter>
     </ClInclude>
-    <ClInclude Include="Packet.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="pch.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="ChatServer.h">
       <Filter>ChatServer</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketManager.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="User.h">
+      <Filter>User</Filter>
+    </ClInclude>
+    <ClInclude Include="UserManager.h">
+      <Filter>User</Filter>
+    </ClInclude>
+    <ClInclude Include="ErrorCode.h">
+      <Filter>ChatServer</Filter>
+    </ClInclude>
+    <ClInclude Include="IOCP.h">
+      <Filter>ServerNetwork</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -45,9 +66,6 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="IOCP.cpp">
-      <Filter>ServerNetwork</Filter>
-    </ClCompile>
-    <ClCompile Include="IOCP.h">
       <Filter>ServerNetwork</Filter>
     </ClCompile>
     <ClCompile Include="EchoServer.cpp">
@@ -61,6 +79,15 @@
     </ClCompile>
     <ClCompile Include="ChatServer.cpp">
       <Filter>ChatServer</Filter>
+    </ClCompile>
+    <ClCompile Include="PacketManager.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="User.cpp">
+      <Filter>User</Filter>
+    </ClCompile>
+    <ClCompile Include="UserManager.cpp">
+      <Filter>User</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

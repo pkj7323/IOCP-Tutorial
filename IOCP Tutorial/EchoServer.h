@@ -9,7 +9,7 @@ class EchoServer : public IOCP
 	std::thread mProcessThread;
 
 	std::mutex mLock;
-	std::deque<PacketData> mPacketDataQueue;
+	std::deque<RawPacketData> mPacketDataQueue;
 public:
 	EchoServer() = default;
 	virtual ~EchoServer() = default;
@@ -24,7 +24,7 @@ public:
 private:
 	void processPacket();
 
-	PacketData dequePacketData();
+	RawPacketData dequePacketData();
 
 
 };

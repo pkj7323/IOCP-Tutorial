@@ -6,6 +6,10 @@
 #pragma comment(lib, "mswsock.lib")
 #include <iostream>
 
+#include <memory>
+#include <deque>
+#include <unordered_map>
+#include <functional>
 #include <chrono>
 #include <thread>
 #include <vector>
@@ -14,4 +18,3 @@
 #include <string>
 #include <queue>
 #include <mutex>
-#include "Define.h"

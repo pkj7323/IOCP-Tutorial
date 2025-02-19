@@ -1,5 +1,6 @@
 #pragma once
 #include "IOCP.h"
+#include "PacketManager.h"
 
 class ChatServer : public IOCP
 {
@@ -8,9 +9,9 @@ class ChatServer : public IOCP
 public:
 	ChatServer() = default;
 	virtual ~ChatServer() = default;
-	virtual void OnConnect(const UINT32& clientIndex) override;
-	virtual void OnClose(const UINT32& clientIndex) override;
-	virtual void OnReceive(const UINT32& clientIndex, const UINT32& size, char* pData) override;
+	void OnConnect(const UINT32& clientIndex) override;
+	void OnClose(const UINT32& clientIndex) override;
+	void OnReceive(const UINT32& clientIndex, const UINT32& size, char* pData) override;
 	void Run(const uint32_t& maxClient);
 	void End();
 };

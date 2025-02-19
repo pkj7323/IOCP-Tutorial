@@ -1,12 +1,6 @@
 #pragma once
-#include "pch.h"
-#include "Define.h"
+#pragma once
 #include "ClientInfo.h"
-
-/*TODO:
-7 단계.비동기 Accept 사용하기
-6단계까지는 Accept 처리를 동기 I / O로 했다.이것을 비동기I / O로 바꾼다.이로써 네트워크 동작이 모두 비동기 I / O가 된다
-6단계에서 이어서 기능을 구현한다.*/
 
 
 class IOCP

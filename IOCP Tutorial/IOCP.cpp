@@ -106,16 +106,6 @@ bool IOCP::StartServer(const UINT32& maxClientCount)
 
 void IOCP::DestroyThread()
 {
-	
-	m_isAccepterRun = false;
-	closesocket(m_listenSocket);
-
-	if (m_accepterThread.joinable())
-	{
-		m_accepterThread.join();
-	}
-
-
 	m_isWorkerRun = false;
 	CloseHandle(m_IOCPHandle);
 
@@ -126,6 +116,16 @@ void IOCP::DestroyThread()
 			th.join();
 		}
 	}
+	
+	m_isAccepterRun = false;
+	closesocket(m_listenSocket);
+
+	if (m_accepterThread.joinable())
+	{
+		m_accepterThread.join();
+	}
+
+
 
 }
 
@@ -289,6 +289,10 @@ void IOCP::accepterThread()
 
 void IOCP::closeSocket(ClientInfo* pClientInfo, bool bIsForce)
 {
+	if (pClientInfo->IsConnected() == false)
+	{
+		return;
+	}
 	auto clientIndex = pClientInfo->GetIndex();
 
 	pClientInfo->Close(bIsForce);
